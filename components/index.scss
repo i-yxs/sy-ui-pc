@@ -1,0 +1,80 @@
+
+
+// 链接文本
+.link-text {
+    cursor: pointer;
+    color: #409eff;
+    &:hover {
+        text-decoration:underline
+    }
+}
+// flex布局样式
+.sy-layout {
+    flex-shrink: 0;
+    overflow: hidden;
+    &.flex {
+        display: flex;
+    }
+    &.auto {
+        flex: 1;
+    }
+    &.column {
+        flex-direction: column;
+    }
+}
+// 重构el-tabs样式
+.sy-tabs {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: none;
+    border-color: #efefef;
+    &.min-margin {
+        .el-tabs__header {
+            margin-bottom: 10px;
+        }
+    }
+    &.not-margin {
+        .el-tabs__header {
+            margin-bottom: 0!important;
+        }
+    }
+    .el-tabs__header {
+        margin-bottom: 15px;
+    }
+    .el-tabs__nav-wrap {
+        margin-bottom: 0;
+    }
+    .el-tabs__content {
+        flex: 1;
+        .el-tab-pane {
+            height: 100%;
+            overflow-x: hidden;
+            position: relative;
+        }
+    }
+    .el-tabs__item {
+        color: #333;
+        min-width: 80px;
+        text-align: center;
+        &:hover,
+        &.is-active {
+            color: #409eff;
+        }
+    }
+}
+.sy-layout-popover {
+    padding: 0;
+}
+.sy-layout-filter-popover {
+    padding: 0;
+    box-shadow: 0 5px 15px rgba(0,0,0,.3);
+}
+/*超出省略*/
+.sy-ui-ellipsis { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; word-break:break-all;}
+.sy-ui-ellipsis.l1 { -webkit-line-clamp: 1; }
+.sy-ui-ellipsis.l2 { -webkit-line-clamp: 2; }
+.sy-ui-ellipsis.l3 { -webkit-line-clamp: 3; }
+.sy-ui-ellipsis.l4 { -webkit-line-clamp: 4; }
+.sy-ui-ellipsis.l5 { -webkit-line-clamp: 5; }
