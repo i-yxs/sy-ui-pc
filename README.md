@@ -18,7 +18,7 @@ import '@/components/sy-ui'
 
 |组件名|组件说明|
 |---|---|
-|sy-cascader|[级联选择器](https://github.com/i-yxs/sy-ui/tree/main/components/sy-ui/components/sy-cascader/README.md)|
+|sy-cascader|[级联选择器](https://github.com/i-yxs/sy-ui-pc/tree/main/components/sy-ui/components/sy-cascader/README.md)|
 |sy-checkbox|[多选框](https://github.com/i-yxs/sy-ui-pc/tree/main/components/sy-ui/components/sy-checkbox/README.md)|
 |sy-date-picker|[日期选择器](https://github.com/i-yxs/sy-ui-pc/tree/main/components/sy-ui/components/sy-date-picker/README.md)|
 |sy-dialog|[对话框](https://github.com/i-yxs/sy-ui-pc/tree/main/components/sy-ui/components/sy-dialog/README.md)|
