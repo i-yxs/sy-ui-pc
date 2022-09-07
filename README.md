@@ -41,7 +41,7 @@ import '@/components/sy-ui'
 |sy-upload|[上传组件](https://github.com/i-yxs/sy-ui-pc/tree/main/components/sy-ui/sy-upload/README.md)|
 |sy-upload-card|[上传组件-卡片样式](https://github.com/i-yxs/sy-ui-pc/tree/main/components/sy-ui/sy-upload-card/README.md)|
 
-### props.request 数据请求配置
+### props.request
 
 数据请求配置可传递两种数据类型
 <br>
