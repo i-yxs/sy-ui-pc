@@ -10,7 +10,13 @@
         @closed="_handleClosed"
     >
         <slot slot="title" name="title" />
-        <div v-loading="loading" class="sy-dialog-content">
+        <div
+            v-loading="loading"
+            :element-loading-text="loadingProps_.text"
+            :element-loading-spinner="loadingProps_.spinner"
+            :element-loading-background="loadingProps_.background"
+            class="sy-dialog-content"
+        >
             <div class="content" :style="contentStyle_">
                 <slot v-if="contentVisible" />
             </div>
@@ -51,10 +57,14 @@
             height: String,
             visible: Boolean,
             loading: Boolean,
+            // 内部边距大小
+            padding: String,
             // 自定义内容元素样式
             contentStyle: Object,
             // 询问文本
-            askingText: { type: String, default: '确认放弃本次操作？' },
+            askingText: { type: String, default: '确定放弃本次操作？' },
+            // element-loading
+            loadingProps: Object,
             // 关闭前询问是否关闭
             beforeCloseAsking: { type: Boolean, default: true }
         }, NAME),
@@ -79,7 +89,14 @@
             contentStyle_() {
                 return {
                     height: this.height,
+                    padding: this.padding,
                     ...this.contentStyle
+                }
+            },
+            loadingProps_() {
+                return {
+                    text: '拼命加载中',
+                    ...this.loadingProps
                 }
             }
         },
@@ -130,6 +147,9 @@
     ::v-deep {
         .el-dialog__body {
             padding: 0 !important;
+        }
+        .el-dialog__footer {
+            text-align: right;
         }
     }
 }

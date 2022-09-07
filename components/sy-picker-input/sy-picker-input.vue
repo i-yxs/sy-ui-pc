@@ -10,9 +10,9 @@
         <el-input
             v-bind="props"
             :clearable="false"
-            @clear="$emit('clear')"
-            @input="$emit('input')"
-            @change="$emit('change')"
+            @clear="$emit('clear', $event)"
+            @input="$emit('input', $event)"
+            @change="$emit('change', $event)"
         >
             <span
                 v-if="!props.disabled && props.clearable && !isEmpty(props.value)"
@@ -68,8 +68,6 @@
             labelKey: { type: String, default: 'label' },
             // 是否显示按钮
             button: { type: Boolean, default: true },
-            // 是否只读
-            readonly: { type: Boolean, default: true },
             // 按钮图标
             buttonIcon: String,
             // 按钮文本
@@ -132,10 +130,8 @@
 
 <style lang='scss' scoped>
 .sy-picker-input {
-    width: 100%;
-    display: inline-flex;
+    display: flex;
     align-items: flex-start;
-    vertical-align: middle;
     &:hover {
         .clear {
             opacity: 1;

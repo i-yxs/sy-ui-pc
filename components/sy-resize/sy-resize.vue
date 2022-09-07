@@ -86,10 +86,10 @@
             },
             handleMousemove(e) {
                 if (this.mouse) {
-                    let minWidth = this.minWidth || this.width
-                    let maxWidth = this.maxWidth || this.width
-                    let minHeight = this.minHeight || this.height
-                    let maxHeight = this.maxHeight || this.height
+                    let minWidth = Number(this.minWidth || this.width)
+                    let maxWidth = Number(this.maxWidth || this.width)
+                    let minHeight = Number(this.minHeight || this.height)
+                    let maxHeight = Number(this.maxHeight || this.height)
                     switch (this.mouse.type) {
                     case 'top':
                         this.$el.style.height = Math.min(Math.max(this.mouse.y - e.clientY + this.mouse.objectHeight, minHeight), maxHeight) + 'px'
@@ -135,14 +135,14 @@
         &.bottom {
             left: 0;
             right: 0;
-            height: 10px;
+            height: 6px;
             cursor: ns-resize;
         }
         &.left,
         &.right {
             top: 0;
             bottom: 0;
-            width: 10px;
+            width: 6px;
             cursor: ew-resize;
         }
         &.top {

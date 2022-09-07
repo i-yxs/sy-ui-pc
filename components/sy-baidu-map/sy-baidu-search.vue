@@ -3,6 +3,7 @@
 * @author yc
 !-->
 <template>
+
     <div class="sy-baidu-search">
         <div class="search-input">
             <el-input
@@ -68,7 +69,7 @@
                 popoverVisible: false
             }
         },
-        inject: ['provideComponent'],
+        inject: ['provideInstance'],
         computed: {
             emptyProps() {
                 if (this.loading) {
@@ -91,7 +92,7 @@
             }
         },
         watch: {
-            'provideComponent.ready'() {
+            'provideInstance.ready'() {
                 this.init()
             }
         },
@@ -101,11 +102,11 @@
         methods: {
             // 初始化
             init() {
-                if (this.provideComponent.ready) {
-                    this.localSearch = new BMap.LocalSearch(this.provideComponent.map, {
+                if (this.provideInstance.ready) {
+                    this.localSearch = new BMap.LocalSearch(this.provideInstance.map, {
                         pageCapacity: 20,
                         onSearchComplete: (res) => {
-                            this.options = res.Cr
+                            this.options = res.Cr || res.Br || []
                             this.loading = false
                         }
                     })
@@ -126,7 +127,9 @@
                         this.loading = true
                         this.timer = setTimeout(() => {
                             this.options = []
-                            this.localSearch.search(this.keyword)
+                            this.localSearch.search(this.keyword, {
+                                forceLocal: false
+                            })
                         }, 300)
                     } else {
                         this.options = []
@@ -135,8 +138,11 @@
             },
             handleOptionClick(option) {
                 let { lng, lat } = option.point
-                this.provideComponent.addMarker({ latitude: lat, longitude: lng })
-                this.provideComponent.map.setViewport([option.point])
+                this.$emit('change', {
+                    label: option.title,
+                    latitude: lat,
+                    longitude: lng
+                })
                 this.popoverVisible = false
             }
         }

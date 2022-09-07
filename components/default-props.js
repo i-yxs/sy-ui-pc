@@ -1,8 +1,12 @@
 import { Message } from 'element-ui'
-import { cityCenter } from '@/config'
+import { checkPermissions } from '@/directive/permission'
 import { isType, hyphenationToCamel } from './utils'
 import { getToken, getRefreshToken } from '@/utils/auth'
-import { baseDownSrc, uploadFileUrl } from '@/utils'
+import {
+    BASE_API,
+    baseDownSrc,
+    uploadFileUrl
+} from '@/utils'
 
 const datePicker = {
     style: {
@@ -47,8 +51,8 @@ const upload = {
     limit: 50,
     maxSize: 30,
     action: uploadFileUrl,
-    thumbApi: baseDownSrc + '?fileId=',
-    originalApi: baseDownSrc + '?fileId=',
+    thumbApi: baseDownSrc,
+    originalApi: baseDownSrc,
     formatResponse(response) {
         return response.data
     },
@@ -61,6 +65,15 @@ const upload = {
 }
 
 const defaultProps = {
+    'sy-table': {
+        checkAccessMethod: checkPermissions
+    },
+    'sy-dropdown': {
+        checkAccessMethod: checkPermissions
+    },
+    'sy-layout-filter': {
+        checkAccessMethod: checkPermissions
+    },
     'el-date-picker': datePicker,
     'sy-date-picker': datePicker,
     'el-time-picker': timePicker,
@@ -100,18 +113,17 @@ const defaultProps = {
     },
     'sy-baidu-map': {
         zoom: 12,
-        center: cityCenter,
+        center: '',
         fullscreen: true,
         scrollWheelZoom: true
     },
     'sy-picker-location': {
-        bindItems: {
+        bindProps: {
             latitude: 'geoY',
             longitude: 'geoX'
         }
     },
     'sy-picker-location-dialog': {
-        cursor: 'pointer',
         fullscreen: true,
         beforeConfirm({ markers }) {
             if (markers.length === 0) {
@@ -120,6 +132,16 @@ const defaultProps = {
             }
         },
         enableMarkerPoint: true
+    },
+    'sy-import-button': {
+        baseUrl: BASE_API,
+        headers() {
+            return {
+                token: getToken(),
+                refreshToken: getRefreshToken()
+            }
+        },
+        downloadBaseUrl: baseDownSrc
     }
 }
 

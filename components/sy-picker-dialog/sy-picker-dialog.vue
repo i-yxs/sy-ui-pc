@@ -6,6 +6,8 @@
     <sy-dialog
         :title="title"
         :width="width"
+        :height="height"
+        :class="{'rem-mode': remMode}"
         :visible="visible"
         :beforeCloseAsking="false"
         :closeOnClickModal="false"
@@ -14,8 +16,9 @@
         <div class="sy-picker-dialog">
             <el-tabs
                 v-if="tabsProps"
-                v-model="tabsValue_"
+                :value="tabsValue_"
                 class="layout-tabs not-margin"
+                @tab-click="handleTabClick"
             >
                 <el-tab-pane
                     v-for="item in tabsProps"
@@ -28,13 +31,14 @@
                 ref="syTableConfig"
                 v-bind="tableProps_"
                 :params="params"
+                :loading.sync="loading"
                 :selected-rows.sync="selectedRows"
                 @update:selectedRows="handleSelectionChange"
             />
         </div>
         <span v-if="tableProps_.selectable" slot="footer">
-            <el-button size="mini" @click="$emit('update:visible', false)">取 消</el-button>
-            <el-button type="primary" size="mini" @click="handleConfirm">确 定</el-button>
+            <el-button :loading="loading" size="mini" @click="$emit('update:visible', false)">取 消</el-button>
+            <el-button :loading="loading" type="primary" size="mini" @click="handleConfirm">确 定</el-button>
         </span>
     </sy-dialog>
 </template>
@@ -43,7 +47,6 @@
     import config from './config'
     import {
         isType,
-        isEmpty,
         deepMerge,
         hyphenationToCamel
     } from '../utils'
@@ -61,6 +64,10 @@
             title: String,
             // 窗口宽度
             width: { type: String, default: '1200px' },
+            // 窗口高度
+            height: { type: String, default: '608px' },
+            // rem模式
+            remMode: Boolean,
             // 窗口可见状态
             visible: Boolean,
             // 最大可选数量
@@ -104,6 +111,7 @@
         data() {
             return {
                 params: {},
+                loading: false,
                 tabsValue_: null,
                 selectedRows: []
             }
@@ -127,6 +135,9 @@
                     tableProps = tabsProps.tableProps
                 }
                 switch (isType(tableProps)) {
+                case 'object':
+                    tableProps = deepMerge({}, tableProps)
+                    break
                 case 'string':
                     try {
                         tableProps = config[tableProps].get.call(this)
@@ -136,18 +147,33 @@
                     break
                 case 'array':
                     try {
-                        let [path, props = {}, context = this] = tableProps
-                        tableProps = deepMerge(config[path].get.call(context), props)
+                        let [path, props = {}, context = this, params] = tableProps
+                        tableProps = deepMerge(config[path].get.apply(context, params), props)
                     } catch (err) {
                         console.log(`“${tableProps[0]}”类型不存在`, err)
                     }
                     break
                 }
+                if (tableProps) {
+                    /**
+                     * 当需要实现已选择的数据不能再被选择时，可以配置selectable为自定义函数；
+                     * 但是通常自身选择的数据可以取消选择，这时需要排除自身选择的数据再进行过滤；
+                     * 可是在部分情况下可能无法获取自身已选择的数据，所以这里把selectable函数重新封装，
+                     * 只有不在value中的数据才执行selectable函数，从而实现自身选择的数据可以取消选择；
+                     */
+                    let { rowKey, selectable } = tableProps
+                    if (isType(selectable, 'function')) {
+                        tableProps.selectable = (row, index) => {
+                            if (this.value.findIndex(item => item[rowKey] === row[rowKey]) > -1) return true
+                            return selectable(row, index)
+                        }
+                    }
+                }
                 return {
-                    height: '608px',
+                    remMode: this.remMode,
+                    selectable: true,
                     ...tableProps,
-                    multiple,
-                    selectable: true
+                    multiple
                 }
             }
         },
@@ -157,15 +183,7 @@
                     this.init()
                 }
             },
-            tabsValue_() {
-                this.selectedRows = []
-            },
-            'tableProps.params': {
-                deep: true,
-                handler() {
-                    this.init()
-                }
-            }
+            tabsValue: 'init'
         },
         mounted() {
             this.init()
@@ -198,7 +216,9 @@
                     let rows = selectedRows
                     this.$emit('update:visible', false)
                     this.$emit('update:tabsValue', tabsValue_)
-                    rows = rows.filter(row => !value.includes(row))
+                    if (Array.isArray(valueToData)) {
+                        rows = rows.filter(row => !value.includes(row))
+                    }
                     if (typeof onTransform === 'function') {
                         rows = rows.map(onTransform)
                     }
@@ -210,6 +230,13 @@
                 } else {
                     this.$message.warning('请至少选中一项')
                 }
+            },
+            // 选项卡切换时触发
+            handleTabClick($tab) {
+                this.tabsValue_ = $tab.name
+                this.$emit('update:tabsValue', $tab.name)
+                this.params = deepMerge({}, this.tableProps_.params)
+                this.selectedRows = []
             },
             // 选择项改变时触发
             handleSelectionChange(selectedRows) {
@@ -228,6 +255,7 @@
 <style lang='scss' scoped>
 .sy-picker-dialog {
     padding: 10px;
+    height: 100%;
     .layout-tabs {
         margin-top: -10px;
         margin-bottom: 10px;

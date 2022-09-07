@@ -9,7 +9,7 @@
             @input="$emit('input', $event)"
             @change="$emit('change', $event)"
         />
-        <span class="label">{{ label }}</span>
+        <span v-if="label" class="label">{{ label }}</span>
     </div>
 </template>
 
@@ -62,10 +62,12 @@
 
 <style lang='scss' scoped>
 .sy-switch {
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    vertical-align: middle;
     .label {
         margin-left: 8px;
+        line-height: 1em;
     }
 }
 </style>

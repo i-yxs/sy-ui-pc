@@ -29,6 +29,7 @@
     // 方法
     import {
         isPromise,
+        deepMerge,
         attrsToProps,
         differenceMerge,
         hyphenationToCamel
@@ -92,7 +93,7 @@
         methods: {
             // 初始化组件
             init() {
-                this.markers = JSON.parse(JSON.stringify(this.value))
+                this.markers = deepMerge([], this.value)
             },
             // 点击确定按钮时触发
             async handleConfirm() {

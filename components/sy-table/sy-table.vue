@@ -7,7 +7,9 @@
         v-if="!emptyDataHide || total > 0"
         class="sy-table"
         v-loading="loading"
-        element-loading-text="拼命加载中"
+        :element-loading-text="loadingProps_.text"
+        :element-loading-spinner="loadingProps_.spinner"
+        :element-loading-background="loadingProps_.background"
         :style="{height: tableCacheHeight}"
     >
         <div class="table-main">
@@ -28,24 +30,24 @@
                     <template v-if="selectable_">
                         <el-table-column
                             v-if="multiple"
-                            :selectable="_selectable"
+                            :width="rem40"
                             :resizable="false"
+                            :selectable="_selectable"
                             type="selection"
-                            width="40"
                             fixed="left"
                             align="center"
                             header-align="center"
                         />
                         <el-table-column
                             v-else
+                            :width="rem40"
                             fixed="left"
-                            width="40"
                             align="center"
                             header-align="center"
                         >
                             <template slot-scope="{row}">
                                 <el-radio
-                                    :value="selectedRows_.indexOf(row) > -1"
+                                    :value="_selected(row)"
                                     :label="true"
                                     :disabled="!_selectable(row)"
                                     class="table-radio"
@@ -56,17 +58,17 @@
                     <!-- 序号 -->
                     <el-table-column
                         v-if="serialNumber"
+                        :width="_getRealWidth(serialNumberWidth)"
                         :label="serialNumberLabel"
                         :resizable="false"
                         :index="_getIndex"
                         type="index"
-                        width="50"
                         fixed="left"
                         align="center"
                     />
                     <!-- 表格列 -->
                     <template v-for="(column, index) in columns">
-                        <column-item
+                        <sy-column-item
                             v-if="_getColumnVisible(column)"
                             :key="index"
                             :index="index"
@@ -80,26 +82,19 @@
                     >
                         <template slot-scope="scope">
                             <slot v-bind="scope" name="operate">
-                                <sy-dropdown>
-                                    <template v-for="(item, index) in operate_.button">
-                                        <div
-                                            v-if="get2FunctionScope(item.visible, scope) !== false"
-                                            :key="index"
-                                            class="dropdown-item"
-                                            @click="get2FunctionScope(item.onClick, scope)"
-                                        >
-                                            <el-dropdown-item divided :icon="item.icon">{{ item.label }}</el-dropdown-item>
-                                        </div>
-                                    </template>
-                                </sy-dropdown>
+                                <sy-dropdown
+                                    :scope="scope"
+                                    :options="operate_.button"
+                                    @click="(item) => get2Function(item.onClick, scope)"
+                                />
                             </slot>
                         </template>
                     </el-table-column>
                 </el-table>
             </el-form>
         </div>
-        <div class="table-foot" v-if="multiple || paginationVisible">
-            <div class="selection" v-if="multiple">
+        <div class="table-foot">
+            <div class="selection" v-if="selectedInfo && multiple">
                 <span class="label">已选择 <span class="count">{{ selectedRows_.length }}</span> 项</span>
                 <span
                     v-if="selectedRows_.length"
@@ -123,15 +118,20 @@
     // 方法
     import {
         isType,
+        isEmpty,
+        remToPx,
+        getProperty,
         attrsToProps,
         get2Function,
+        toLocaleString,
         differenceMerge,
-        hyphenationToCamel
+        hyphenationToCamel,
+        isValidNumber
     } from '../utils'
     import defaultProps, { setPropsDefault } from '../default-props'
     // 组件
-    import ColumnItem from './ColumnItem'
-    import ColumnStatus from './ColumnStatus'
+    import SyColumnItem from './SyColumnItem'
+    import SyColumnStatus from './SyColumnStatus'
     import SyDropdown from '../sy-dropdown/sy-dropdown'
 
     const NAME = 'sy-table'
@@ -151,8 +151,8 @@
         name: hyphenationToCamel(NAME),
         components: {
             SyDropdown,
-            ColumnItem,
-            ColumnStatus
+            SyColumnItem,
+            SyColumnStatus
         },
         inheritAttrs: false,
         props: setPropsDefault({
@@ -160,6 +160,8 @@
             data: Array,
             // 数据总条目数据
             total: Number,
+            // rem模式
+            remMode: Boolean,
             // 列表配置
             columns: Array,
             // 操作列配置
@@ -174,29 +176,39 @@
             serialNumber: { type: Boolean, default: true },
             // 序号标签文本
             serialNumberLabel: { type: String, default: '序号' },
+            // 序号标签宽度
+            serialNumberWidth: { type: [Number, String], default: 60 },
             // 每页显示的数量
             pageSize: Number,
             // 当前页下标
             pageIndex: Number,
+            // 空数据时显示的文本内容，emptyDataHide为true时有效
+            emptyText: { type: String, default: '暂无数据' },
             // 当前高亮行
             currentRow: Object,
             // 自定义合计数据
             summaryData: Object,
             // 选中行列表
             selectedRows: Array,
-            // 空数据时显示的文本内容，emptyDataHide为true时有效
-            emptyText: { type: String, default: '暂无数据' },
+            // 多选时是否显示已选信息栏
+            selectedInfo: { type: Boolean, default: true },
+            // element-loading
+            loadingProps: Object,
             // 空数据时隐藏组件
             emptyDataHide: Boolean,
             // 分页器props
             paginationProps: Object,
             // 数据更新时触发重新渲染表格组件
             updatedReRender: Boolean,
+            // 自定义权限检查函数
+            checkAccessMethod: Function,
             // 只有一页时是否隐藏分页器
             onePageHidePagination: Boolean
         }, NAME),
         data() {
             return {
+                rem40: 40,
+                rem60: 60,
                 // 表格渲染状态，用于columns更新时，利用v-if重新实例化el-table组件
                 tableRender: true,
                 // 表格缓存高度
@@ -210,10 +222,10 @@
         computed: {
             props() {
                 let props = differenceMerge(attrsToProps(this.$attrs, booleanKeys), defaultProps[NAME])
+                let data = this.data || []
                 return {
-                    data: this.data || [],
+                    data,
                     border: true,
-                    rowKey: 'id',
                     stripe: true,
                     height: '100%',
                     maxHeight: '100%',
@@ -238,15 +250,26 @@
                 }
             },
             formModel() {
-                return {
-                    row: this.data
+                let rows = []
+                let {
+                    children = 'children',
+                    hasChildren = 'hasChildren'
+                } = this.props.treeProps || {}
+                // 平铺数据
+                let recursion = (data) => {
+                    if (Array.isArray(data)) {
+                        data.forEach(row => {
+                            rows.push(row)
+                            if (row[hasChildren] !== false) {
+                                recursion(row[children])
+                            }
+                        })
+                    }
                 }
-            },
-            selectable_() {
-                return !!this.selectable
-            },
-            selectedRows_() {
-                return Array.isArray(this.selectedRows) ? this.selectedRows : []
+                recursion(this.data)
+                return {
+                    rows
+                }
             },
             pageSizes() {
                 let sizes = [10, 20, 30, 50, 100, 200, 500, 1000, 2000]
@@ -256,8 +279,21 @@
                 }
                 return sizes.sort((a, b) => a - b)
             },
+            selectable_() {
+                return !!this.selectable
+            },
+            selectedRows_() {
+                return Array.isArray(this.selectedRows) ? this.selectedRows : []
+            },
+            loadingProps_() {
+                return {
+                    text: '拼命加载中',
+                    ...this.loadingProps
+                }
+            },
             paginationProps_() {
                 return {
+                    show: true,
                     layout: 'total, sizes, prev, pager, next, jumper',
                     pageSizes: this.pageSizes,
                     background: true,
@@ -269,8 +305,9 @@
             },
             // 分页器显示状态
             paginationVisible() {
-                if (this.onePageHidePagination && this.total <= this.pageSize) {
-                    return false
+                if (!this.paginationProps_.show) return false
+                if (this.onePageHidePagination) {
+                    if (!this.total || this.total <= this.pageSize) return false
                 }
                 return true
             }
@@ -284,6 +321,7 @@
                         this.reRenderTable()
                     }
                     this.dataLengthCache = length
+                    this.updatingSummary()
                     this._updateSelectedRows()
                 }
             },
@@ -306,6 +344,12 @@
                     }
                 }
             },
+            summaryData: {
+                deep: true,
+                handler() {
+                    this.updatingSummary()
+                }
+            },
             selectedRows: {
                 deep: true,
                 handler() {
@@ -314,17 +358,23 @@
             }
         },
         mounted() {
+            this._onResize()
             this._updateSelectedRows()
+            window.addEventListener('resize', this._onResize)
         },
         updated() {
             this.doLayout()
         },
+        destroyed() {
+            window.removeEventListener('resize', this._onResize)
+        },
         methods: {
             get2Function,
-            get2FunctionScope(value, scope) {
-                let { row, $index } = scope
-                let params = { row, index: this._getIndex($index) - 1 }
-                return get2Function(value, params)
+            // 检查操作按钮的权限
+            checkAccessToOperate(scope) {
+                return (value) => {
+                    return this.checkAccessMethod(value)
+                }
             },
             // el-table组件重新布局
             doLayout() {
@@ -334,6 +384,17 @@
                     elTable.doLayout()
                     // el-table组件内部更新滚动位置的计算函数，用于更新左右固定列的阴影显示状态
                     elTable.syncPostion()
+                }
+            },
+            // 强制更新合计栏
+            updatingSummary() {
+                let elTable = this.$refs.elTable
+                if (elTable) {
+                    elTable.$children.forEach(children => {
+                        if (children.$options.name === 'ElTableFooter') {
+                            children.$forceUpdate()
+                        }
+                    })
                 }
             },
             // 对整个表单进行校验
@@ -431,6 +492,21 @@
                     })
                 })
             },
+            // 浏览器窗口大小改变时触发
+            _onResize() {
+                if (this.remMode) {
+                    this.rem40 = remToPx(40)
+                    this.rem60 = remToPx(60)
+                } else {
+                    this.rem40 = 40
+                    this.rem60 = 60
+                }
+            },
+            // 表格行是否选中
+            _selected(row) {
+                let { rowKey } = this.props
+                return this.selectedRows_.findIndex(v => v[rowKey] === row[rowKey]) > -1
+            },
             // 获取当前视图数据相对于当前页数的下标
             _getIndex(index) {
                 return this.pageSize * (this.pageIndex - 1) + index + 1
@@ -442,67 +518,102 @@
                 }
                 return !!this.selectable
             },
+            // 根据prop获取原始column
+            _getColumn(prop, columns = this.columns) {
+                let length = columns.length
+                for (let i = 0; i < length; i++) {
+                    if (columns[i].prop === prop) {
+                        return columns[i]
+                    }
+                    if (Array.isArray(columns[i].children)) {
+                        let column = this._getColumn(prop, columns[i].children)
+                        if (column) {
+                            return column
+                        }
+                    }
+                }
+            },
             // 计算合计
             _summaryMethod({ columns, data }) {
-                let sums = []
-                let lableIndex = this.columns.findIndex(v => v.summaryLable)
-                if (lableIndex === -1) {
-                    lableIndex = 1
-                }
-                columns.forEach(({ property }, index) => {
-                    if (index === lableIndex) {
-                        // 合计栏lable文本
-                        sums[index] = this.columns[lableIndex].summaryLable || '合计'
-                    }
-                    let column = this.columns.find(v => v.prop === property)
+                columns = columns.map(({ property }) => {
+                    return this._getColumn(property)
+                })
+                let sums = columns.map((column) => {
                     if (column) {
-                        let {
-                            summaryType = '',
-                            summaryPrefix = '',
-                            summarySuffix = ''
-                        } = column
-                        if (column.summary) {
+                        if (column.summaryLable) return column.summaryLable
+                        if (column && column.summary) {
+                            let value = '- -'
+                            let {
+                                summaryType = '',
+                                summaryPrefix = '',
+                                summarySuffix = ''
+                            } = column
                             let summaryData = this.summaryData
                             if (summaryData && typeof summaryData === 'object') {
                                 // 自定义合计数据
                                 let summaryKey = column.summaryKey || column.prop
-                                sums[index] = summaryData[summaryKey]
-                                if (column.type === 'money') {
-                                    // 金额类型处理
-                                    sums[index] = moneyFormat(sums[index], column.precision)
+                                if (isValidNumber(summaryData[summaryKey])) {
+                                    value = Number(summaryData[summaryKey].toFixed(column.precision || 2))
+                                    value = toLocaleString(value, 0, column.precision)
+                                    value = summaryPrefix + value + summarySuffix
                                 }
-                                sums[index] = summaryPrefix + sums[index] + summarySuffix
                             } else {
                                 // 计算列表合计
-                                let values = data.map(item => Number(item[column.prop]))
+                                let values = data.map(item => Number(getProperty(item, column.prop)))
                                 if (!values.every(value => isNaN(value))) {
-                                    sums[index] = values.reduce((prev, curr) => {
+                                    value = values.reduce((prev, curr) => {
                                         return !isNaN(Number(curr)) ? prev + curr : prev
                                     }, 0)
                                     // 合计类型处理
                                     switch (summaryType) {
                                     case 'average':
                                         // 平均值
-                                        sums[index] = (sums[index] / values.length).toFixed(2)
+                                        value = value / values.length
                                         break
                                     }
-                                    if (column.type === 'money') {
-                                        // 金额类型处理
-                                        sums[index] = moneyFormat(sums[index], column.precision)
-                                    }
-                                    sums[index] = summaryPrefix + sums[index] + summarySuffix
-                                } else {
-                                    sums[index] = '- -'
+                                    value = Number(value.toFixed(column.precision || 2))
+                                    value = toLocaleString(value, 0, column.precision)
+                                    value = summaryPrefix + value + summarySuffix
                                 }
                             }
+                            return value
                         }
                     }
+                    return ''
                 })
+                // 如果没有列任何定义summaryLable属性，则默认在第一列显示
+                if (this.columns.findIndex(v => v.summaryLable) === -1) {
+                    sums[this.serialNumber ? 1 : 0] = '合计'
+                }
                 return sums
+            },
+            // 获取表格列的固定状态
+            _getColumnFixed(column) {
+                let __fixed__ = get2Function(column.__fixed__, column)
+                if (isEmpty(__fixed__)) {
+                    return get2Function(column.fixed, column)
+                }
+                return __fixed__
+            },
+            // 获取表格列宽度
+            _getRealWidth(width) {
+                if (isEmpty(width)) return width
+                if (this.remMode) {
+                    return remToPx(width)
+                }
+                return width
             },
             // 获取表格列的可见状态
             _getColumnVisible(column) {
-                return get2Function(column.visible, column) !== false && get2Function(column.__visible__, column) !== false
+                let { visible, accessKey, __visible__ } = column
+                if (get2Function(visible, column) !== false && get2Function(__visible__, column) !== false) {
+                    if (typeof this.checkAccessMethod === 'function') {
+                        accessKey = get2Function(accessKey, column)
+                        if (accessKey) return this.checkAccessMethod(accessKey)
+                    }
+                    return true
+                }
+                return false
             },
             // 获取指定行位于选中列表内的下标
             _getSelectedRowIndex(row) {
@@ -512,15 +623,43 @@
             // 更新选中行
             _updateSelectedRows() {
                 this.$nextTick(() => {
-                    if (this.$refs.elTable) {
-                        if (Array.isArray(this.data)) {
-                            this.data.forEach(row => {
-                                let bool = this._getSelectedRowIndex(row) > -1
-                                this.$refs.elTable.toggleRowSelection(row, bool)
-                            })
-                        }
-                        if (!this.multiple && this.selectedRows_.length) {
-                            this.$refs.elTable.setCurrentRow(this.selectedRows_[0])
+                    if (this.selectable && Array.isArray(this.data)) {
+                        let { rowKey } = this.props
+                        let elTable = this.$refs.elTable
+                        if (elTable) {
+                            if (this.multiple) {
+                                let states = elTable.store.states
+                                let changed = true
+                                let selectedRows = []
+                                this.selectedRows_.forEach(row => {
+                                    let index = this.data.findIndex(v => v[rowKey] === row[rowKey])
+                                    if (index > -1) {
+                                        selectedRows.push(this.data[index])
+                                    }
+                                })
+                                /**
+                                 * 因为el-table组件没有提供批量改变选中状态的api，
+                                 * 所以初始更新选中行时只能逐行更新，由此导致会重复触发selection-change事件
+                                 * 这里直接操作el-table实例，来实现批量改变选中状态
+                                 */
+                                states.selection = Array.isArray(states.selection) ? states.selection : []
+                                if (states.selection.length === selectedRows.length) {
+                                    changed = selectedRows.findIndex(row => states.selection.indexOf(row) === -1) > -1
+                                }
+                                if (changed) {
+                                    states.selection = selectedRows
+                                    elTable.store.updateAllSelected(selectedRows)
+                                    this._handleSelectionChange(selectedRows)
+                                }
+                            } else {
+                                if (this.selectedRows_.length) {
+                                    let row = this.selectedRows_[0]
+                                    row = this.data.find(v => v[rowKey] === row[rowKey])
+                                    if (row) {
+                                        this.$refs.elTable.setCurrentRow(row)
+                                    }
+                                }
+                            }
                         }
                     }
                 })
@@ -538,45 +677,42 @@
             },
             // 点击列表行时触发
             _handleRowClick(row) {
-                if (this._selectable(row)) {
-                    let selectedRows = this.selectedRows || []
-                    if (this.multiple) {
-                        // 多选时点击行切换选中状态用户体验不太好，所以这个功能先搁置
-                        // let index = this._getSelectedRowIndex(row)
-                        // if (index > -1) {
-                        //     selectedRows.splice(index, 1)
-                        //     this.$refs.elTable.toggleRowSelection(row, false)
-                        // } else {
-                        //     selectedRows.push(row)
-                        //     this.$refs.elTable.toggleRowSelection(row, true)
-                        // }
+                if (this.selectable) {
+                    if (this._selectable(row)) {
+                        let selectedRows = this.selectedRows || []
+                        if (this.multiple) {
+                            // 多选时点击行切换选中状态用户体验不太好，所以这个功能先搁置
+                        } else {
+                            selectedRows = [row]
+                            this.$emit('update:selectedRows', selectedRows)
+                        }
+                        this.$refs.elTable.setCurrentRow(row)
                     } else {
-                        selectedRows = [row]
+                        this.$message.warning('该数据已被选择或不能被选择')
                     }
-                    this.$refs.elTable.setCurrentRow(row)
-                    this.$emit('update:selectedRows', selectedRows)
                 }
                 this.$emit('update:currentRow', row)
             },
             // 当选择项发生变化时触发
             _handleSelectionChange(selection) {
-                clearTimeout(this.selectionTimer)
-                this.selectionTimer = setTimeout(() => {
-                    // 去掉当前视图所有缓存选中行
-                    let { rowKey } = this.props
-                    let selectedRows = this.selectedRows || []
-                    selectedRows = selectedRows.filter(row => {
-                        return this.data.findIndex(v => v[rowKey] === row[rowKey]) === -1
-                    })
-                    selectedRows = selectedRows.concat(selection)
-                    this.$emit('update:selectedRows', selectedRows)
-                }, 300)
+                // 去掉当前视图所有缓存选中行
+                let { rowKey } = this.props
+                let selectedRows = this.selectedRows || []
+                selectedRows = selectedRows.filter(row => {
+                    return this.data.findIndex(v => v[rowKey] === row[rowKey]) === -1
+                })
+                selectedRows = selectedRows.concat(selection)
+                this.$emit('update:selectedRows', selectedRows)
             },
             // 取消全部选中项
             _handleCancelAllSelected() {
                 let selectedRows = []
                 this.$emit('update:selectedRows', selectedRows)
                 this.$refs.elTable.clearSelection()
+            },
+            // 操作列按钮点击时触发
+            _handleOperateButtonClick({ scope, option }) {
+                get2Function(option.onClick, scope)
             }
         }
     }
@@ -598,7 +734,6 @@
     .table-foot {
         display: flex;
         align-items: center;
-        margin-top: 10px;
         .selection {
             display: flex;
             align-items: center;
@@ -607,6 +742,7 @@
             font-size: 14px;
             color: #666;
             min-width: 150px;
+            margin-top: 10px;
             .label {
                 margin-right: 10px;
             }
@@ -616,6 +752,7 @@
         }
         .pagination {
             flex: 1;
+            margin-top: 10px;
             .el-pagination {
                 text-align: right;
             }
@@ -628,9 +765,11 @@
             .el-table .cell-col > .el-form-item {
                 margin-bottom: 0!important;
                 & > .el-form-item__content {
+                    position: relative;
                     overflow: hidden;
                     white-space: nowrap;
                     text-overflow: ellipsis;
+                    padding: 0 10px;
                 }
                 .el-form-item__error {
                     display: none;
@@ -662,13 +801,15 @@
             text-align: center;
             line-height: 22px;
             border-radius: 11px;
-            padding: 0 10px;
             font-size: 12px;
             min-width: 56px;
         }
     }
     ::v-deep {
         .el-table {
+            .el-table__row.expanded {
+                color: inherit;
+            }
             .el-table--border {
                 border: 1px solid #efefef;
             }
@@ -685,6 +826,7 @@
                 }
                 .cell {
                     height: 40px;
+                    padding: 0 10px;
                 }
             }
             tbody {
@@ -699,13 +841,17 @@
                 //     }
                 // }
             }
+            .is-hidden {
+                visibility: hidden;
+            }
             .el-table__footer {
                 td,
                 th{
-                    background: #edf5ff;
+                    background: #f3f3f3;
                 }
                 .cell {
                     height: 40px;
+                    padding: 0 10px;
                 }
             }
             .cell {
@@ -714,11 +860,12 @@
                 display: flex;
                 align-items: center;
                 line-height: initial;
-                padding-left: 10px;
-                padding-right: 10px;
+                padding-left: 0;
+                padding-right: 0;
                 .el-table__indent,
                 .el-table__expand-icon,
                 .el-table__placeholder {
+                    flex-shrink: 0;
                     display: inline-block;
                 }
             }
@@ -741,7 +888,8 @@
                 }
             }
             .is-center {
-                .cell {
+                .cell,
+                .sy-switch {
                     justify-content: center;
                 }
             }

@@ -100,11 +100,11 @@
             item: Object,
             render: Function
         },
-        render: (h, ctx) => {
-            return ctx.props.render({
+        render: (h, context) => {
+            let { props } = context
+            return props.render({
                 h,
-                ctx,
-                item: ctx.props.item
+                item: props.item
             })
         },
         functional: true
@@ -196,7 +196,6 @@
                 let props = differenceMerge({}, item.props, defaultProps[item.type])
                 props.value = this.formData[item.prop]
                 props.disabled = this._getItemDisabled(item)
-                props.readonly = this._getItemReadonly(item)
                 props.clearable = isEmpty(props.clearable) ? isEmpty(item.rules) : props.clearable
                 props.placeholder = isEmpty(props.placeholder) ? item.label : props.placeholder
                 props.bindObject = this.formData
@@ -205,8 +204,7 @@
             },
             // 获取表单项绑定事件
             _getItemEvent(item) {
-                let testReg = /^on[A-Z]/
-                let keys = Object.keys(item).filter(key => testReg.test(key))
+                let keys = Object.keys(item).filter(key => /^on[A-Z]/.test(key))
                 let listeners = {}
                 keys.forEach(key => {
                     listeners[hyphenationToCamel(key.substring(2), true).replace(/^-|-$/g, '')] = function($event) {
@@ -217,7 +215,7 @@
             },
             // 获取表单项验证规则
             _getItemRules(item) {
-                if (!this._getItemDisabled(item) && !this._getItemReadonly(item)) {
+                if (!this._getItemDisabled(item)) {
                     if (Array.isArray(item.rules)) {
                         return validatePremise(item.rules, this.formData)
                     }
@@ -243,7 +241,7 @@
                 if (this.readonly) {
                     return this.readonly
                 } else {
-                    return getProperty(item, 'props.readonly')
+                    return getProperty(item, 'readonly')
                 }
             },
             // 表单项输入时触发
@@ -261,7 +259,8 @@
                                 component: clickType,
                                 attribute: {
                                     props: {
-                                        dataId: this.formData[item.idKey || 'id']
+                                        dataId: this.formData[item.idKey || 'id'],
+                                        ...get2Function(item.clickProps, params)
                                     }
                                 }
                             })

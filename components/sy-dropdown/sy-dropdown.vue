@@ -9,8 +9,9 @@
 <template>
     <el-dropdown
         v-if="visible"
-        trigger="click"
         size="small"
+        class="sy-dropdown"
+        trigger="click"
     >
         <slot name="button">
             <el-button
@@ -21,6 +22,17 @@
             />
         </slot>
         <el-dropdown-menu slot="dropdown" class="dropdown-menu">
+            <div
+                v-for="(option, index) in options_"
+                :key="index"
+                class="dropdown-item"
+                @click="handleOptionClick(option)"
+            >
+                <el-dropdown-item
+                    :icon="option.icon"
+                    :divided="option.divided !== false"
+                >{{ option[labelKey] }}</el-dropdown-item>
+            </div>
             <slot />
         </el-dropdown-menu>
     </el-dropdown>
@@ -28,16 +40,46 @@
 <script>
 
     import {
+        get2Function,
         hyphenationToCamel
     } from '../utils'
+    import { setPropsDefault } from '../default-props'
 
     const NAME = 'sy-dropdown'
 
     export default {
         name: hyphenationToCamel(NAME),
+        inheritAttrs: false,
+        props: setPropsDefault({
+            value: null,
+            scope: Object,
+            // 选项数据
+            options: Array,
+            // 排除的value列表，选项value包含在内时不显示
+            exclude: Array,
+            // 从options内获取的属性名称
+            labelKey: { type: String, default: 'label' },
+            valueKey: { type: String, default: 'value' },
+            // 自定义权限检查函数
+            checkAccessMethod: Function
+        }, NAME),
         data() {
             return {
                 visible: true
+            }
+        },
+        computed: {
+            options_() {
+                let options = []
+                if (Array.isArray(this.options)) {
+                    options = this.options.filter(this.getOptionVisible)
+                }
+                if (Array.isArray(this.exclude)) {
+                    options = options.filter(option => {
+                        return this.exclude.indexOf(option[this.valueKey]) === -1
+                    })
+                }
+                return options
             }
         },
         mounted() {
@@ -47,11 +89,30 @@
             this.updateVisible()
         },
         methods: {
+            // 更新组件可见状态
             updateVisible() {
-                if (Array.isArray(this.$slots.default)) {
-                    this.visible = this.$slots.default.findIndex(v => v.tag) > -1
+                this.visible = Array.isArray(this.options) && this.options_.length || Array.isArray(this.$slots.default) && this.$slots.default.findIndex(v => v.tag) > -1
+            },
+            // 获取选项可见状态
+            getOptionVisible(option) {
+                let { visible, accessKey } = option
+                if (get2Function(visible, this.scope) !== false) {
+                    if (typeof this.checkAccessMethod === 'function') {
+                        accessKey = get2Function(accessKey, this.scope)
+                        if (accessKey) return this.checkAccessMethod(accessKey)
+                    }
+                    return true
+                }
+                return false
+            },
+            // 选项点击时触发
+            handleOptionClick(option) {
+                this.$emit('input', option[this.valueKey])
+                this.$emit('change', option)
+                if (this.$listeners.click) {
+                    this.$emit('click', option)
                 } else {
-                    this.visible = false
+                    get2Function(option.onClick, this.scope)
                 }
             }
         }

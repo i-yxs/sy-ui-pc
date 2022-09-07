@@ -320,9 +320,10 @@
             },
             // 预览图片
             handleImageViewer(file) {
-                this.$viewerElement.innerHTML = `<img src="${this.getOriginalPath(file)}">`
+                let images = this.viewFileList.mediaList.filter(file => file.fileType === 'image')
+                this.$viewerElement.innerHTML = images.map(file => `<img src="${this.getOriginalPath(file)}">`).join('')
                 this.$nextTick(() => {
-                    this.$viewer.index = 0
+                    this.$viewer.index = images.indexOf(file)
                     this.$viewer.update()
                     this.$viewer.show()
                 })

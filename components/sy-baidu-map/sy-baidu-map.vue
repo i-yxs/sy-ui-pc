@@ -17,11 +17,12 @@
         >
             <slot name="marker" />
         </sy-baidu-marker>
-        <sy-baidu-search />
+        <sy-baidu-search @change="handleSearchChange" />
     </baidu-map>
 </template>
 <script>
     // 方法
+    import mapStyle from '@/assets/mapStyle/not_interest_point'
     import {
         attrsToProps,
         differenceMerge,
@@ -48,7 +49,7 @@
         inheritAttrs: false,
         props: setPropsDefault({
             // 地图光标
-            cursor: { type: String, default: 'default' },
+            cursor: { type: String, default: 'grab' },
             // 标记点
             markers: Array,
             // 折线
@@ -78,7 +79,7 @@
         },
         provide() {
             return {
-                provideComponent: this
+                provideInstance: this
             }
         },
         computed: {
@@ -97,18 +98,21 @@
                 immediate: true,
                 handler(markers = []) {
                     this.drawObject.markers = [...markers]
+                    this.setViewport()
                 }
             },
             polyline: {
                 immediate: true,
                 handler(polyline = []) {
                     this.drawObject.polyline = [...polyline]
+                    this.setViewport()
                 }
             },
             polygons: {
                 immediate: true,
                 handler(polygons = []) {
                     this.drawObject.polygons = [...polygons]
+                    this.setViewport()
                 }
             }
         },
@@ -140,14 +144,34 @@
                 }
                 this.$emit('update:markers', this.drawObject.markers)
             },
+            // 根据所有覆盖物调整视野
+            setViewport() {
+                clearTimeout(this.viewportTimer)
+                this.viewportTimer = setTimeout(() => {
+                    let points = []
+                    this.drawObject.markers.forEach(item => {
+                        points.push({
+                            lng: item.longitude,
+                            lat: item.latitude
+                        })
+                    })
+                    this.map.setViewport(points)
+                }, 300)
+            },
             // 地图准备就绪时触发
             handleReady($event) {
                 let { map, BMap } = $event
                 this.map = map
                 this.BMap = BMap
                 this.ready = true
-                map.addControl(new BMap.MapTypeControl({ anchor: BMAP_ANCHOR_BOTTOM_RIGHT }))
+                this.map.setMapStyle({
+                    styleJson: mapStyle
+                })
+                map.addControl(new BMap.MapTypeControl({
+                    anchor: BMAP_ANCHOR_TOP_RIGHT
+                }))
                 map.setDefaultCursor(this.cursor)
+                this.setViewport()
                 this.$emit('ready', $event)
             },
             // 点击地图时触发
@@ -155,6 +179,21 @@
                 if (this.readonly) return
                 let { lng, lat } = $event.point
                 this.addMarker({ latitude: lat, longitude: lng })
+            },
+            // 点击搜索结果时触发
+            handleSearchChange(point) {
+                if (this.readonly) {
+                    this.map.setViewport([{
+                        lat: point.latitude,
+                        lng: point.longitude
+                    }])
+                } else {
+                    this.addMarker(point)
+                    this.map.setViewport([{
+                        lat: point.latitude,
+                        lng: point.longitude
+                    }])
+                }
             }
         }
     }

@@ -33,7 +33,7 @@
         name: hyphenationToCamel(NAME),
         inheritAttrs: false,
         props: setPropsDefault({
-            bindItems: Array,
+            bindProps: Array,
             bindObject: Object
         }, NAME),
         data() {
@@ -53,34 +53,58 @@
             },
             bindObject: {
                 deep: true,
-                immediate: true,
                 handler() {
-                    if (this.bindObject && Array.isArray(this.bindItems)) {
-                        this.value_ = this.bindItems.map(key => {
-                            return this.bindObject[key] || ''
-                        })
-                    }
+                    this.updateValue()
                 }
             }
         },
         mounted() {
-            this.value_ = this.props.value
+            if (this.bindObject && Array.isArray(this.bindProps)) {
+                this.value_ = this.bindProps.map(key => this.bindObject[key] || '')
+                /**
+                 * 赋值占位prop，清除验证错误信息
+                 */
+                let { __formItem__ } = this.props
+                if (__formItem__) {
+                    this.$set(this.bindObject, __formItem__.prop, this.value_)
+                }
+            } else {
+                this.value_ = this.props.value
+            }
             this.ready_ = true
         },
         methods: {
-            handleChange(value) {
-                this.value_ = value
-                if (this.bindObject && Array.isArray(this.bindItems)) {
+            // 更新value
+            updateValue() {
+                clearTimeout(this.updateTimer)
+                this.updateTimer = setTimeout(() => {
+                    if (this.bindObject && Array.isArray(this.bindProps)) {
+                        let value = this.bindProps.map(key => this.bindObject[key] || '')
+                        if (value && this.props.value && value.toString() !== this.props.value.toString()) {
+                            this.$emit('input', value)
+                        }
+                        this.value_ = value
+                    }
+                }, 300)
+            },
+            // 更新bindProps
+            updateBindProps() {
+                let value = this.value_
+                if (this.bindObject && Array.isArray(this.bindProps)) {
                     if (Array.isArray(value)) {
-                        this.bindItems.forEach((key, index) => {
+                        this.bindProps.forEach((key, index) => {
                             this.$set(this.bindObject, key, value[index])
                         })
                     } else {
-                        this.bindItems.forEach(key => {
+                        this.bindProps.forEach(key => {
                             this.$set(this.bindObject, key, value)
                         })
                     }
                 }
+            },
+            handleChange(value) {
+                this.value_ = value
+                this.updateBindProps()
                 this.$emit('input', value)
                 this.$emit('change', value)
             }

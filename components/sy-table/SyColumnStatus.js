@@ -9,6 +9,7 @@ import {
     getDictProp
 } from '../utils'
 export default {
+    name: 'SyColumnStatus',
     functional: true,
     props: {
         row: Object,
@@ -23,17 +24,17 @@ export default {
         })
         if (data) {
             switch (style) {
-            case 'dot':
-                return (
-                    <div class='column-status dot'>
-                        <i style={{ background: data.color }} class='dot'/>
-                        <span class='label'>{ data.label }</span>
-                    </div>
-                )
-            case 'block':
-                return (
-                    <div class='column-status block' style={{ background: data.color }}>{ data.label }</div>
-                )
+                case 'dot':
+                    return (
+                        <div class='column-status dot'>
+                            <i style={{ background: data.color }} class='dot' />
+                            <span class='label'>{data.label}</span>
+                        </div>
+                    )
+                case 'block':
+                    return (
+                        <div class='column-status block' style={{ background: data.color }}>{data.label}</div>
+                    )
             }
         }
         return <span>- -</span>

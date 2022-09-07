@@ -7,9 +7,10 @@
         <sy-picker-input
             v-bind="props"
             :bindObject="bindObject"
-            @input="$emit('input', $event)"
+            @input="handleInput"
             @clear="handelClear"
             @click="handleActive"
+            @change="$emit('change', $event)"
         >
             <slot name="prepend" slot="prepend" />
             <slot name="append" slot="append" />
@@ -17,6 +18,7 @@
         <sy-picker-dialog
             :visible.sync="pickerDialog.visible"
             v-bind="dialogProps"
+            :remMode="remMode"
             @change="handleChange"
         />
     </div>
@@ -33,7 +35,9 @@
     // 组件
 
     const NAME = 'sy-picker-dialog-input'
-    const booleanKeys = []
+    const booleanKeys = [
+        'readonly'
+    ]
 
     export default {
         name: hyphenationToCamel(NAME),
@@ -43,6 +47,8 @@
             title: String,
             // 绑定值
             value: null,
+            // rem模式
+            remMode: Boolean,
             // 从选择的数据内获取value的属性名
             valueKey: { type: String, default: 'id' },
             // 自定义上下文
@@ -58,7 +64,7 @@
              * 对象的prop为从选择的数据内获取值的属性名
              * 对象的value为赋值给bindObject对象的属性名
              */
-            bindItems: Object,
+            bindProps: Object,
             // 绑定对象
             bindObject: Object,
             // 表格配置
@@ -97,9 +103,9 @@
                             let row = {
                                 [this.valueKey]: value
                             }
-                            if (this.isBindItems) {
-                                Object.keys(this.bindItems).forEach(key => {
-                                    let bindValue = this.bindObject[this.bindItems[key]]
+                            if (this.isBindProps) {
+                                Object.keys(this.bindProps).forEach(key => {
+                                    let bindValue = this.bindObject[this.bindProps[key]]
                                     if (Array.isArray(bindValue)) {
                                         row[key] = bindValue[index]
                                     }
@@ -111,25 +117,27 @@
                     return []
                 } else {
                     // 单选
+                    if (isEmpty(this.value)) return []
                     let row = {
                         [this.valueKey]: this.value
                     }
-                    if (this.isBindItems) {
-                        Object.keys(this.bindItems).forEach(key => {
-                            row[key] = this.bindObject[this.bindItems[key]]
+                    if (this.isBindProps) {
+                        Object.keys(this.bindProps).forEach(key => {
+                            row[key] = this.bindObject[this.bindProps[key]]
                         })
                     }
                     return [row]
                 }
             },
-            isBindItems() {
-                return !isEmpty(this.bindItems) && !isEmpty(this.bindObject)
+            isBindProps() {
+                return !isEmpty(this.bindProps) && !isEmpty(this.bindObject)
             },
             dialogProps() {
                 return {
                     title: this.title_,
                     value: this.value_,
                     width: this.props.width,
+                    height: this.props.height,
                     multiple: this.multiple,
                     maxCount: this.maxCount,
                     tableProps: this.tableProps
@@ -141,10 +149,19 @@
         mounted() {
         },
         methods: {
+            // 输入时触发
+            handleInput(value) {
+                if (this.isBindProps) {
+                    Object.values(this.bindProps).forEach(key => {
+                        this.$set(this.bindObject, key, this.multiple ? [] : '')
+                    })
+                }
+                this.$emit('input', value)
+            },
             // 清空时触发
             handelClear() {
-                if (this.isBindItems) {
-                    Object.values(this.bindItems).forEach(key => {
+                if (this.isBindProps) {
+                    Object.values(this.bindProps).forEach(key => {
                         this.$set(this.bindObject, key, this.multiple ? [] : '')
                     })
                 }
@@ -163,8 +180,8 @@
                 } else {
                     this.$emit('input', rows[0][this.valueKey])
                 }
-                if (this.isBindItems) {
-                    let keys = Object.keys(this.bindItems)
+                if (this.isBindProps) {
+                    let keys = Object.keys(this.bindProps)
                     if (this.multiple) {
                         let values = []
                         keys.forEach((key, index) => {
@@ -174,12 +191,12 @@
                             })
                         })
                         values.forEach((value, index) => {
-                            this.$set(this.bindObject, this.bindItems[keys[index]], value)
+                            this.$set(this.bindObject, this.bindProps[keys[index]], value)
                         })
                     } else {
                         rows.forEach(row => {
                             keys.forEach(key => {
-                                this.$set(this.bindObject, this.bindItems[key], row[key])
+                                this.$set(this.bindObject, this.bindProps[key], row[key])
                             })
                         })
                     }
