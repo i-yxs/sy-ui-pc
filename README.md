@@ -40,3 +40,25 @@ import '@/components/sy-ui'
 |sy-time-picker|[时间选择器](https://github.com/i-yxs/sy-ui-pc/tree/main/components/sy-ui/sy-time-picker/README.md)|
 |sy-upload|[上传组件](https://github.com/i-yxs/sy-ui-pc/tree/main/components/sy-ui/sy-upload/README.md)|
 |sy-upload-card|[上传组件-卡片样式](https://github.com/i-yxs/sy-ui-pc/tree/main/components/sy-ui/sy-upload-card/README.md)|
+
+### props.request 数据请求配置
+
+数据请求配置可传递两种数据类型
+<br>
+
+1、数据类型为Object时：
+
+```js
+{
+  // 接口地址
+  url: String, 
+  // 请求方式
+  method: String,
+  // 其他参数参考axios
+}
+```
+2、数据类型为Function时：
+
+> 组件内部会调用该方法，具体请求操作需自行实现
+
+
