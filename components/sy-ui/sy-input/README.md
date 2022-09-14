@@ -1,8 +1,6 @@
 sy-input
 ===========================
 同 `el-input` 保留原组件所有props
-<br>
-该组件使用配置项来生成 `el-checkbox` 和 `el-checkbox-button`
 
 ### 新增组件参数
 
