@@ -8,3 +8,5 @@ sy-cascader
 |---|---|---|---|---|
 |deep|限制显示的数据深度；例如省市区只展示到市，则设置为2即可；|Number, String|默认不限制|-|
 |request|数据请求配置，数据格式见 [props.request](https://github.com/i-yxs/sy-ui-pc/blob/main/README.md#propsrequest)|Object, Function|-|-|
+
+[< 返回组件列表](https://github.com/i-yxs/sy-ui-pc/blob/main/README.md#组件列表)
