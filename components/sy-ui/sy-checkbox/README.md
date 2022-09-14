@@ -19,8 +19,11 @@ sy-checkbox
 > 以下为特殊配置项：
 
 ```js
-{
-  [labelKey]: String,
-  [valueKey]: Any,
-}
+[
+  {
+    [labelKey]: String,
+    [valueKey]: Any,
+  },
+  ...
+]
 ```
