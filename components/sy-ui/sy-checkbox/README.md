@@ -20,10 +20,12 @@ sy-checkbox
 
 ```js
 [
-  {
-    [labelKey]: String,
-    [valueKey]: Any,
-  },
-  ...
+    {
+      [labelKey]: String,
+      [valueKey]: Any,
+    },
+    ...
 ]
 ```
+
+[< 返回组件列表](https://github.com/i-yxs/sy-ui-pc/blob/main/README.md#组件列表)
