@@ -69,11 +69,4 @@ sy-form-config
 }
 ```
 
-### slot
-|名称|说明|
-|---|---|
-|title|自定义标题|
-|default|内容|
-|footer|按钮操作区的内容|
-
 [< 返回组件列表](https://github.com/i-yxs/sy-ui-pc/blob/main/README.md#组件列表)
